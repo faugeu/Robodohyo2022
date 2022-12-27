@@ -31,6 +31,8 @@ int colourThreshold;
 
 // motor
 int ultrasPin[2][2] = {{ultraRightTrig, ultraRightEcho}, {ultraLeftTrig, ultraLeftEcho}};
+double straightConst = 1; // Right is master wheel, left is slave wheel.
+double reverseConst = 1;
 
 
 int getValueIR(){
@@ -40,10 +42,17 @@ int getValueIR(){
 
 
 int getValueUltra(int side) {
-  // 0 is right, 1 is left
+  // -1 is left, 1 is right
   long duration, distance;
-  int trig = ultrasPin[side][0];
-  int echo = ultrasPin[side][1];
+  int trig, echo;
+  if (side == -1) {
+    trig = ultraLeftTrig;
+    echo = ultraLeftEcho;
+  }
+  else {
+    trig = ultraRightTrig;
+    echo = ultraRightEcho;
+  }
   digitalWrite(trig, LOW);  // Added this line
   delayMicroseconds(2); // Added this line
   digitalWrite(trig, HIGH);
@@ -55,36 +64,6 @@ int getValueUltra(int side) {
     distance = 0;
   }
   return distance;
-}
-
-
-void runMotor(int right, int left) {
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, HIGH);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
-  analogWrite(enRight, right); 
-  analogWrite(enLeft, left);
-}
-
-
-void runMotorReverse(int right, int left) {
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, HIGH);
-  analogWrite(enRight, right); 
-  analogWrite(enLeft, left);
-}
-
-
-void accelerate() {
-  int delayTime = 20; // milliseconds between each speed step
-  // accelerate the motor
-  for(int speed = 0; speed <= 255; speed++) { // counts from 0 to 255 (max speed) using the variable "speed"
-    runMotor(speed, speed); // set the new speed
-    delay(delayTime); // delay between speed steps
-  }
 }
 
 
@@ -105,6 +84,47 @@ void startRoutine() {
 }
 
 
+void runStraight(int speed) {
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in4, LOW);
+  analogWrite(enRight, speed); 
+  analogWrite(enLeft, speed * straightConst);
+}
+
+
+void runReverse(int direction = 0, int speed) {
+  // -1 is left, 0 is mid and 1 is right
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+  analogWrite(enRight, speed); 
+  analogWrite(enLeft, speed * pow(reverseConst, direction) * straightConst);
+}
+
+
+void accelerate(int direction, int maxSpeed) {
+  // -1 is reverse, 1 is straight
+  int delayTime = 20; // milliseconds between each speed step
+  // accelerate the motor
+  if (direction == 1) {
+    for(int speed = 0; speed <= maxSpeed; speed++) { // counts from 0 to 255 (max speed) using the variable "speed"
+      runStraight(speed); // set the new speed
+      delay(delayTime); // delay between speed steps
+    }
+  }
+  else {
+    for(int speed = 0; speed <= maxSpeed; speed++) { // counts from 0 to 255 (max speed) using the variable "speed"
+      runReverse(speed); // set the new speed
+      delay(delayTime); // delay between speed steps
+    }
+  }
+  
+}
+
+
 void attack() {
   int valueIR = getValueIR();
   int valueUltraLeft = getValueUltra(1);
@@ -112,7 +132,6 @@ void attack() {
   //Move robot forward opponent
   
   if (valueIR <= 80){ //range for robot to attack
-    accelerate();
   }
   else{//out of attack range
     //run or continue to detect
@@ -121,7 +140,7 @@ void attack() {
 
 
 void backOff(int direction) {
-
+  accelerate(-1, 100);
 }
 
 
@@ -147,55 +166,29 @@ void setup() {
 
 
 void loop() {
-  // int calibrateValue = startRoutine();
-  // int lineLeftValue = analogRead(lineLeft);
-  // int lineMidValue = analogRead(lineMid);
-  // int lineRightValue = analogRead(lineRight);
-
-  // Serial.println(calibrateValue);
-
-  // if ((lineLeftValue < calibrateValue) || (lineMidValue < calibrateValue) || (lineRightValue < calibrateValue)){
-  //   runMotor(0,0); 
-  // }
-  // else{
-  //   runMotor(75,80);
-  // }
-
   // put your main code here, to run repeatedly:
-
-  /*
-  Button is pressed --> Wait until button is released startRoutine
-  If no opponents found --> search.
-  If yes --> attack.
-  Attack fail --> Tornado in 5s
-  Inside search and attack there is back off function.
-  */
- while (digitalRead(buttonLeft) || digitalRead(buttonRight)) {
+  while (digitalRead(buttonLeft) || digitalRead(buttonRight)) {
     startRoutine();
- }
+  }
  
- while (!digitalRead(buttonLeft) || digitalRead(buttonRight)) {
+  while (!digitalRead(buttonLeft) || digitalRead(buttonRight)) {
     // Edge is detected on the right.
     if (analogRead(lineRight) < colourThreshold) {
       // Back off and make a U-Turn to the left.
-      backOff(0);
-
+      backOff(-1);
     }
-    
+    else if (analogRead(lineMid) < colourThreshold) {      
+      // Go backward and turn back.
+      backOff(0);
+    }
     // Edge is detected on the left.
     else if (analogRead(lineLeft) < colourThreshold) {      
       // Back off and make a U-Turn to the right.
       backOff(1);
     }
-
-    else if (analogRead(lineMid) < colourThreshold) {      
-      // Go backward and turn back.
-      backOff(2);
-    }
-
     else {
-      
+
     }
 
- }
+  }
 }
