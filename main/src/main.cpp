@@ -26,13 +26,15 @@ const int ultraRightTrig = 13;
 const int ultraRightEcho = A5;
 SharpIR sensor(SharpIR::GP2Y0A02YK0F, A4);
 
+//constants
+int count = 0;
 // sensor
 int colourThreshold;
 
 // motor
 int ultrasPin[2][2] = {{ultraRightTrig, ultraRightEcho}, {ultraLeftTrig, ultraLeftEcho}};
 double straightConst = 1; // Right is master wheel, left is slave wheel.
-double reverseConst = 1;
+double turnConst = 1;
 
 
 int getValueIR(){
@@ -81,43 +83,44 @@ void startRoutine() {
   delay(3000);
   // Calibrate the QTI
   calibrate();
+  count++;
 }
 
 
-void runStraight(int speed) {
+void runStraight(int direction, int speed) {
   digitalWrite(in1, LOW);
   digitalWrite(in2, HIGH);
   digitalWrite(in3, HIGH);
   digitalWrite(in4, LOW);
   analogWrite(enRight, speed); 
-  analogWrite(enLeft, speed * straightConst);
+  analogWrite(enLeft, speed * pow(turnConst, direction) * straightConst);
 }
 
 
-void runReverse(int direction = 0, int speed) {
+void runReverse(int direction, int speed) {
   // -1 is left, 0 is mid and 1 is right
   digitalWrite(in1, HIGH);
   digitalWrite(in2, LOW);
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
   analogWrite(enRight, speed); 
-  analogWrite(enLeft, speed * pow(reverseConst, direction) * straightConst);
+  analogWrite(enLeft, speed * pow(turnConst, direction) * straightConst);
 }
 
 
-void accelerate(int direction, int maxSpeed) {
-  // -1 is reverse, 1 is straight
+void accelerate(int move, int direction, int maxSpeed) {
+  // move: -1 is reverse, 1 is straight.
   int delayTime = 20; // milliseconds between each speed step
   // accelerate the motor
   if (direction == 1) {
     for(int speed = 0; speed <= maxSpeed; speed++) { // counts from 0 to 255 (max speed) using the variable "speed"
-      runStraight(speed); // set the new speed
+      runStraight(0, speed); // set the new speed
       delay(delayTime); // delay between speed steps
     }
   }
   else {
     for(int speed = 0; speed <= maxSpeed; speed++) { // counts from 0 to 255 (max speed) using the variable "speed"
-      runReverse(speed); // set the new speed
+      runReverse(0, speed); // set the new speed
       delay(delayTime); // delay between speed steps
     }
   }
@@ -140,7 +143,6 @@ void attack() {
 
 
 void backOff(int direction) {
-  accelerate(-1, 100);
 }
 
 
@@ -167,11 +169,11 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  while (digitalRead(buttonLeft) || digitalRead(buttonRight)) {
+  while ((digitalRead(buttonLeft) || digitalRead(buttonRight)) && count == 0) {
     startRoutine();
   }
  
-  while (!digitalRead(buttonLeft) || digitalRead(buttonRight)) {
+  while (!digitalRead(buttonLeft) && !digitalRead(buttonRight) && count > 0) {
     // Edge is detected on the right.
     if (analogRead(lineRight) < colourThreshold) {
       // Back off and make a U-Turn to the left.
@@ -187,7 +189,23 @@ void loop() {
       backOff(1);
     }
     else {
-
+      int ultraLeftValue = getValueUltra(-1);
+      int ultraRightValue = getValueUltra(1);
+      if (getValueIR() || ultraLeftValue < 20 || getValueUltra(1) < 20) {
+        attack();
+      }
+      else if (ultraLeftValue) {
+        accelerate(1, 1, 120);
+      }
+      else if (ultraRightValue) {
+        accelerate(1, -1, 120);
+      }
+      else {
+        accelerate(1, 0, 120);
+      }
+    }
+    while (digitalRead(buttonLeft) || digitalRead(buttonRight)) {
+      while(1);
     }
 
   }
