@@ -27,6 +27,34 @@ SharpIR sensor(SharpIR::GP2Y0A02YK0F, A4);
 
 int searchDirection = 0;
 
+int getValueIR(){
+  int dis = sensor.getDistance(); //get distance from IR
+  return dis;
+}
+
+int getValueUltraLeft(){
+  long duration1, distance1;
+  digitalWrite(ultraLeftTrig, LOW);  // Added this line
+  delayMicroseconds(2); // Added this line
+  digitalWrite(ultraLeftTrig, HIGH);
+  delayMicroseconds(10); // Added this line
+  digitalWrite(ultraLeftTrig, LOW);
+  duration1 = pulseIn(ultraLeftEcho, HIGH);
+  distance1 = (duration1/2) / 29.1;
+  return distance1;
+}
+
+int getValueUltraRight(){
+  long duration2, distance2;
+  digitalWrite(ultraRightTrig, LOW);  // Added this line
+  delayMicroseconds(2); // Added this line
+  digitalWrite(ultraRightTrig, HIGH);
+  delayMicroseconds(10); // Added this line
+  digitalWrite(ultraRightTrig, LOW);
+  duration2 = pulseIn(ultraRightEcho, HIGH);
+  distance2 = (duration2/2) / 29.1;
+  return distance2;
+}
 void runMotor(int right, int left) {
   digitalWrite(in1, LOW);
   digitalWrite(in3, HIGH);
@@ -46,14 +74,37 @@ void accelerate() {
   }
 }
 
+int calibrate() {
+  int lineAverage;
+  while (millis() < 500) {
+    int lineLeftValue = analogRead(lineLeft);
+    int lineMidValue = analogRead(lineMid);
+    int lineRightValue = analogRead(lineRight);
+    lineAverage = (lineLeftValue + lineMidValue + lineRightValue) / 4;
+  }
+  return lineAverage;
+}
 
-void startRoutine() {
+int startRoutine() {
   delay(3000);
   // Calibrate the QTI
+  calibrate();
 }
 
 
 void attack() {
+  int valueIR = getValueIR();
+  int valueUltraLeft = getValueUltraLeft();
+  int valueUltraright = getValueUltraRight();
+  //Move robot forward opponent
+  
+  if (valueIR <= 80){ //range for robot to attack
+    accelerate();
+  }
+  else{//out of attack range
+    //run or continue to detect
+  } 
+
 
 }
 
@@ -85,6 +136,18 @@ void setup() {
 
 
 void loop() {
+  int calibrateValue = startRoutine();
+  int lineLeftValue = analogRead(lineLeft);
+  int lineMidValue = analogRead(lineMid);
+  int lineRightValue = analogRead(lineRight);
+
+  if ((lineLeftValue < calibrateValue) || (lineMidValue < calibrateValue) || (lineRightValue < calibrateValue)){
+    runMotor(0,0); 
+  }
+  else{
+    runMotor(75,80);
+  }
+  
   // put your main code here, to run repeatedly:
 
   /*
