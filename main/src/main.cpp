@@ -121,7 +121,10 @@ void attack() {
 
 
 void backOff(int direction) {
-
+  runMotorReverse(120,110);
+  delay(500);
+  runMotorReverse(120,0);
+  delay(1500);
 }
 
 
@@ -194,7 +197,10 @@ void loop() {
     }
 
     else {
-      
+      // runMotor(120,110);
+      runMotor(120,110);
+      delay(500);
+      backOff(1);
     }
 
  }
