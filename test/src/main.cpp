@@ -27,6 +27,24 @@ SharpIR sensor(SharpIR::GP2Y0A02YK0F, A4);
 
 int searchDirection = 0;
 
+void runMotor(int right, int left) {
+  digitalWrite(in1, LOW);
+  digitalWrite(in3, HIGH);
+  digitalWrite(in2, HIGH);
+  digitalWrite(in4, LOW);
+  analogWrite(enRight, right); 
+  analogWrite(enLeft, left);
+}
+
+void runMotorReverse(int right, int left) {
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+  analogWrite(enRight, right); 
+  analogWrite(enLeft, left);
+}
+
 void distanceSensors() {
   long duration1, distance1;
   digitalWrite(ultraLeftTrig, LOW);  // Added this line
@@ -67,6 +85,17 @@ void distanceSensors() {
   delay(1000);
 }
 
+int calibrate() {
+  int lineAverage;
+  while (millis() < 500) {
+    int lineLeftValue = analogRead(lineLeft);
+    int lineMidValue = analogRead(lineMid);
+    int lineRightValue = analogRead(lineRight);
+    lineAverage = (lineLeftValue + lineMidValue + lineRightValue) / 12;
+  }
+  return lineAverage;
+}
+
 void setup() {
   Serial.begin(9600);   
   //button
@@ -89,4 +118,5 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  runMotorReverse();
 }
