@@ -38,8 +38,6 @@ NewPing sonarRight(ultraRightTrig, ultraRightEcho, maxDistance);
 
 // motor
 int ultrasPin[2][2] = {{ultraRightTrig, ultraRightEcho}, {ultraLeftTrig, ultraLeftEcho}};
-double straightConst = 70/58; // Right is master wheel, left is slave wheel.
-double reverseConst = 1;
 
 int getValueIR();
 int getValueUltraLeft();
@@ -47,7 +45,7 @@ int getValueUltraRight();
 void calibrate();
 void accelerate(int direction, int maxSpeed);
 void attack();
-void backOff();
+void backOff(int);
 void startRoutineLeft();
 void startRoutineRight();
 void runMotor(int, int);
@@ -74,69 +72,90 @@ void setup() {
 
 
 void loop() {
-  if (count == 0){
-    int buttonStatusLeft = digitalRead(buttonLeft);
-    int buttonStatusRight = digitalRead(buttonRight);   
-    Serial.println(buttonStatusLeft);
-    Serial.println(buttonStatusRight);
-    delay(100);                       
-
-    if (buttonStatusLeft == 1){
-      startRoutineLeft();
-      count++;
-    }
-    else if (buttonStatusRight == 1){
-      startRoutineRight();
-      count++;
-    }
+  runMotor(100,-100);
+  Serial.println(getValueIR());
+  if (getValueIR()) {
+    runMotor(0,0);
+    delay(3000);
   }
-  else{
+  // if (count == 0){
+  //   int buttonStatusLeft = digitalRead(buttonLeft);
+  //   int buttonStatusRight = digitalRead(buttonRight);   
+  //   Serial.println(buttonStatusLeft);
+  //   Serial.println(buttonStatusRight);
+  //   delay(100);                       
+
+  //   if (buttonStatusLeft == 1){
+  //     startRoutineLeft();
+  //     count++;
+  //   }
+  //   else if (buttonStatusRight == 1){
+  //     startRoutineRight();
+  //     count++;
+  //   }
+  // }
+  // else{
                
-    }
-    int lineLeftValue = analogRead(lineLeft);
-    Serial.print("Left:");
-    Serial.println(lineLeftValue);
+  //   }
+  // int lineLeftValue = analogRead(lineLeft);
+  // Serial.print("Left:");
+  // Serial.println(lineLeftValue);
 
-    //Mid sensor white = 21
-    int lineMidValue = analogRead(lineMid);
-    Serial.print("Mid: ");
-    Serial.println(lineMidValue);
+  // //Mid sensor white = 21
+  // int lineMidValue = analogRead(lineMid);
+  // Serial.print("Mid: ");
+  // Serial.println(lineMidValue);
 
-    //Right sensor white = 26
-    int lineRightValue = analogRead(lineRight);
-    Serial.print("Right: ");
-    Serial.println(lineRightValue);
+  // //Right sensor white = 26
+  // int lineRightValue = analogRead(lineRight);
+  // Serial.print("Right: ");
+  // Serial.println(lineRightValue);
 
-    if (lineLeftValue < 30){
-      backOff(-1);
-    }
-    else if (lineMidValue < 30){
-      startRoutineLeft();
-    }
-    else if (lineRightValue < 30){
-      backOff(1);
-    }
-    else{
-      accelerate(255,255);
-      if (getValueUltraLeft || getValueUltraRight)
-      {
-        attack();
-      }
-    }
-
+  // if (lineLeftValue < 30){
+  //   backOff(-1);
+  // }
+  // else if (lineMidValue < 30){
+  //   startRoutineLeft();
+  // }
+  // else if (lineRightValue < 30){
+  //   backOff(1);
+  // }
+  // else{
+  //   if (getValueIR())
+  //   {
+  //     attack();
+  //   }
+  // }
 }
-// }
 
 int getValueIR()
 {
-  int distance = sensor.getDistance(); //get distance from IR
-  return distance;
+  // int distance = sensor.getDistance(); //get distance from IR
+  // return distance;
+  int maxDistance = 0;
+  int samples = 10;
+  int interval = 38;
+  int delayBurst = 1.5;
+  int count = 0;
+  int IRValue;
+  while (count < samples) {
+    IRValue = sensor.getDistance();
+    if (IRValue > maxDistance) {
+      maxDistance = IRValue;
+    }
+    delay(delayBurst);
+    count++;
+  }
+  delay(interval);
+  if (maxDistance > 120) {
+    maxDistance = 0;
+  }
+  return maxDistance;
 }
 
 
 int getValueUltraLeft() 
 {
-  // -1 is left, 1 is right
   int distance = sonarLeft.ping_cm();
   delay(100);
   if (distance > 150) {
@@ -148,7 +167,6 @@ int getValueUltraLeft()
 
 int getValueUltraRight() 
 {
-  // -1 is left, 1 is right
   int distance = sonarRight.ping_cm();
   delay(100);
   if (distance > 150) {
