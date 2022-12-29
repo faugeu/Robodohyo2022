@@ -25,17 +25,6 @@ const int ultraRightTrig = 13;
 const int ultraRightEcho = A5;
 SharpIR sensor(SharpIR::GP2Y0A02YK0F, A4);
 
-int searchDirection = 0;
-
-void runMotor(int right, int left) {
-  digitalWrite(in1, LOW);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in2, HIGH);
-  digitalWrite(in4, LOW);
-  analogWrite(enRight, right); 
-  analogWrite(enLeft, left);
-}
-
 void runMotorReverse(int right, int left) {
   digitalWrite(in1, HIGH);
   digitalWrite(in2, LOW);
@@ -96,6 +85,34 @@ int calibrate() {
   return lineAverage;
 }
 
+void runMotorNew(int left, int right) {
+  Serial.println("Run forward");
+  if (left > 0) {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, HIGH);
+  } else {
+    digitalWrite(in1, HIGH);
+    digitalWrite(in2, LOW);
+  }
+  if (right > 0) {
+    digitalWrite(in3, HIGH);
+    digitalWrite(in4, LOW);
+  } else {
+    digitalWrite(in3, LOW);
+    digitalWrite(in4, HIGH);
+  }
+  analogWrite(enRight, abs(right)); 
+  analogWrite(enLeft, abs(left));
+}
+
+int getValueIR(){
+  int distance = sensor.getDistance(); //get distance from IR
+  if (distance > 120) {
+    distance = 0;
+  }
+  return distance;
+}
+
 void setup() {
   Serial.begin(9600);   
   //button
@@ -118,5 +135,6 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  runMotorReverse();
+  Serial.println(getValueIR());
+  delay(500);
 }

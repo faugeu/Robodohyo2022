@@ -28,6 +28,8 @@ const int ultraRightEcho = A5;
 const int maxDistance = 200;
 SharpIR sensor(SharpIR::GP2Y0A02YK0F, A4);
 
+//constants
+int count = 0;
 // sensor
 int colourThreshold;
 NewPing sonarLeft(ultraLeftTrig, ultraLeftEcho, maxDistance);
@@ -167,55 +169,28 @@ void calibrate()
 
 //startRoutine Left
 
-
-
-void runStraight(int left, int right) 
-{
+void runMotor(int left, int right) {
   Serial.println("Run forward");
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, HIGH);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
-  analogWrite(enRight, right); 
-  analogWrite(enLeft, left);
-}
-
-void runLeft(int left, int right) 
-{
-  Serial.println("Run forward");
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
-  analogWrite(enRight, right); 
-  analogWrite(enLeft, left);
-}
-
-void runRight(int left, int right) 
-{
-  Serial.println("Run forward");
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, HIGH);
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, HIGH);
-  analogWrite(enRight, right); 
-  analogWrite(enLeft, left);
-}
-
-void runReverse(int left, int right) 
-{
-  // -1 is left, 0 is mid and 1 is right
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, HIGH);
-  analogWrite(enRight, right); 
-  analogWrite(enLeft, left);
+  if (left > 0) {
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, HIGH);
+  } else {
+    digitalWrite(in1, HIGH);
+    digitalWrite(in2, LOW);
+  }
+  if (right > 0) {
+    digitalWrite(in3, HIGH);
+    digitalWrite(in4, LOW);
+  } else {
+    digitalWrite(in3, LOW);
+    digitalWrite(in4, HIGH);
+  }
+  analogWrite(enRight, abs(right)); 
+  analogWrite(enLeft, abs(left));
 }
 
 
-void accelerate(int direction, int maxSpeed) 
-{
+void accelerate(int direction, int maxSpeed) {
   // -1 is reverse, 1 is straight
   int delayTime = 20; // milliseconds between each speed step
   // accelerate the motor
@@ -227,7 +202,7 @@ void accelerate(int direction, int maxSpeed)
   }
   else {
     for(int speed = 0; speed <= maxSpeed; speed++) { // counts from 0 to 255 (max speed) using the variable "speed"
-      runReverse(0, speed); // set the new speed
+      runMotor(0, speed); // set the new speed
       delay(delayTime); // delay between speed steps
     }
   }
@@ -251,12 +226,12 @@ void attack()
 void backOff() 
 {
   Serial.println("Back off");
-  runStraight(0,0);
+  runMotor(0,0);
   
-  runReverse(150, 170);
-  delay(200);
+  runMotor(-150, -170);
+  delay(300);
 
-  runReverse(255,0);
+  runMotor(-255,0);
   delay(900);
 
 }
@@ -267,19 +242,12 @@ void startRoutineLeft()
   delay(3000);
 
   //Spin left
-  Serial.println("Spin Left");
-  int timeStart =millis();
-  Serial.println(getValueIR());
-  while(getValueIR()){
-    Serial.println(getValueIR());
-    Serial.println("Spin");
-    runStraight(0,100);
-  }
-  delay(5000);
+  runStraight(0, 100);
+  delay(100);
+
   //Run straight
-  // Serial.println("Run straight");
-  // runStraight(70, 58);
-  // delay(2000);
+  runMotor(70, 58);
+  delay(400);
 
   //Turn and scan with millis
   // int timeStart = millis();
@@ -307,19 +275,129 @@ void startRoutineRight()
   Serial.println("Start routine Right");
   delay(3000);
 
-  //Spin Right
-  Serial.println("Turn right");
-  runStraight(100, 0);
+  //Spin left
+  runMotor(100, 0);
   delay(1000);
 
   //Run straight
-  Serial.println("Run straight");
   runStraight(70, 58);
-  delay(2000);
+  delay(400);
 
   //Turn and scan with millis
 
   // Calibrate the QTI
   // calibrate();
   // count++;
+}
+
+void setup() {
+  Serial.begin(9600);   
+  //button
+  pinMode(buttonLeft, INPUT);  
+  pinMode(buttonRight, INPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
+  //motor
+  pinMode(enLeft,OUTPUT);
+  pinMode(in1,OUTPUT);
+  pinMode(in2,OUTPUT);
+  pinMode(enRight,OUTPUT);
+  pinMode(in3,OUTPUT);
+  pinMode(in4,OUTPUT);
+  //distance sensor
+  pinMode(ultraLeftTrig,OUTPUT);
+  pinMode(ultraLeftEcho,INPUT);
+  pinMode(ultraRightTrig,OUTPUT);
+  pinMode(ultraRightEcho,INPUT);
+}
+
+
+void loop() {
+  if (count == 0){
+    int button_status = digitalRead(buttonLeft);   
+  Serial.println(button_status);              
+  delay(100);                                
+  if (button_status == 1){
+    startRoutineLeft();
+  }
+  } 
+  
+  // if (count == 0){
+  //   int signalLeft = digitalRead(buttonLeft);
+  //   Serial.println(signalLeft);
+
+  //   int signalRight = digitalRead(buttonRight);
+  //   Serial.println(signalRight);
+  //   delay(200);
+
+  //   if (signalLeft == 1){
+  //     startRoutineLeft();
+  //     count++;
+  //   }
+  //   else if (signalRight == 1) {
+  //     startRoutineRight();
+  //     count++;
+  //   }
+  //   else{
+  //       int lineLeftValue = analogRead(lineLeft);
+  //   Serial.print("Left:");
+  //   Serial.println(lineLeftValue);
+
+  //   //Mid sensor white = 21
+  //   int lineMidValue = analogRead(lineMid);
+  //   Serial.print("Mid: ");
+  //   Serial.println(lineMidValue);
+
+  //   //Right sensor white = 26
+  //   int lineRightValue = analogRead(lineRight);
+  //   Serial.print("Right: ");
+  //   Serial.println(lineRightValue);
+
+  //   if (lineLeftValue < 30){
+  //     backOff();
+  //   }
+  //   else if (lineMidValue < 30){
+  //     backOff();
+  //   }
+  //   else if (lineRightValue < 30){
+  //     backOff();
+  //   }
+  //   else{
+  //     runStraight(150,170);
+  //   }
+  //     }
+  // }
+    // startRoutine();
+  //Left sensor white = 25
+  //Left sensor black = 
+  
+
+
+  // put your main code here, to run repeatedly:
+  // while ((digitalRead(buttonLeft) || digitalRead(buttonRight)) && count == 0) {
+  //   startRoutine();
+
+  // }
+  
+  // while (!digitalRead(buttonLeft) && !digitalRead(buttonRight && count > 0)) {
+  //   // Edge is detected on the right.
+  //   if (analogRead(lineRight) < colourThreshold) {
+  //     // Back off and make a U-Turn to the left.
+  //     backOff(-1);
+  //   }
+  //   else if (analogRead(lineMid) < colourThreshold) {      
+  //     // Go backward and turn back.
+  //     backOff(0);
+  //   }
+  //   // Edge is detected on the left.
+  //   else if (analogRead(lineLeft) < colourThreshold) {      
+  //     // Back off and make a U-Turn to the right.
+  //     backOff(1);
+  //   }
+  //   else {
+  //     runStraight(58);
+  //   }
+  //   while (digitalRead(buttonLeft) || digitalRead(buttonRight)){
+  //     while(1);
+  //   }
+  // }
 }
