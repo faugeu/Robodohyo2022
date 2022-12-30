@@ -86,9 +86,7 @@ void loop() {
     }
   }
   else{
-               
-    }
-  int lineLeftValue = analogRead(lineLeft);
+    int lineLeftValue = analogRead(lineLeft);
   Serial.print("Left:");
   Serial.println(lineLeftValue);
 
@@ -102,35 +100,37 @@ void loop() {
   Serial.print("Right: ");
   Serial.println(lineRightValue);
 
-  if (lineLeftValue < 30){
+  if (lineLeftValue > 100){
+    Serial.println("Backoff");
     backOff(-1);
   }
-  else if (lineMidValue < 30){
-    // To do
+  else if (lineMidValue > 100){
+    runMotor(70,70);
   }
-  else if (lineRightValue < 30){
+  else if (lineRightValue > 100){
+    Serial.println("Backoff");
     backOff(1);
   }
   else{
     if (getValueIR()) {
       attack();
     } else if (getValueUltraLeft()) {
-      runMotor(255, 0);
+      runMotor(255, -255);
     } else if (getValueUltraRight()) {
-      runMotor(0, 255);
+      runMotor(-255, 255);
     } else {
-      runMotor(255, 0);
+      runMotor(255, -255);
       int timeStamp = millis();
-      while (millis() - timeStamp < 5000){ // Test time to turn 270 or 135 degrees
+      while (millis() - timeStamp < 1000){ // Test time to turn 270 or 135 degrees
         if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
           runMotor(0,0);
-          return;
+          break;
         }
       }
-      runMotor(70,58);
-      delay(400);
+      runMotor(70,70);
     }
-  }
+  }     
+    }
 }
 
 int getValueIR()
@@ -181,20 +181,23 @@ int getValueUltraRight()
 }
 
 void runMotor(int left, int right) {
-  Serial.println("Run forward");
   if (left > 0) {
-    digitalWrite(in1, LOW);
-    digitalWrite(in2, HIGH);
-  } else {
+    Serial.println("Left forwarded");
     digitalWrite(in1, HIGH);
     digitalWrite(in2, LOW);
+  } else {
+    Serial.println("Left backwarded");
+    digitalWrite(in1, LOW);
+    digitalWrite(in2, HIGH);
   }
   if (right > 0) {
-    digitalWrite(in3, HIGH);
-    digitalWrite(in4, LOW);
-  } else {
+    Serial.println("Right forwarded");
     digitalWrite(in3, LOW);
     digitalWrite(in4, HIGH);
+  } else {
+    Serial.println("Right backwarded");
+    digitalWrite(in3, HIGH);
+    digitalWrite(in4, LOW);
   }
   analogWrite(enRight, abs(right)); 
   analogWrite(enLeft, abs(left));
@@ -203,17 +206,18 @@ void runMotor(int left, int right) {
 
 void accelerate(int direction, int maxSpeed) {
   // -1 is reverse, 1 is straight
-  int delayTime = 20; // milliseconds between each speed step
+  Serial.println("Accelerate");
+  int delayTime = 10; // milliseconds between each speed step
   // accelerate the motor
   if (direction == 1) {
     for(int speed = 0; speed <= maxSpeed; speed++) { // counts from 0 to 255 (max speed) using the variable "speed"
-      runMotor(speed,0); // set the new speed
+      runMotor(speed, speed); // set the new speed
       delay(delayTime); // delay between speed steps
     }
   }
   else {
     for(int speed = 0; speed <= maxSpeed; speed++) { // counts from 0 to 255 (max speed) using the variable "speed"
-      runMotor(0, speed); // set the new speed
+      runMotor(-speed, -speed); // set the new speed
       delay(delayTime); // delay between speed steps
     }
   }
@@ -223,6 +227,7 @@ void accelerate(int direction, int maxSpeed) {
 
 void attack() 
 {
+  Serial.println("Attack");
    runMotor(255, 255);
 }
 
@@ -235,25 +240,24 @@ void backOff(int direction)
   runMotor(0,0);
   
   //Run backward
-  runMotor(-150, -170);
+  runMotor(-255, -255);
   delay(300);
 
   //Turn and scan
   if (direction == -1)
   {
-    runMotor(-255,0);
+    runMotor(-255,255);
   }
   else{
-    runMotor(0,-255);
+    runMotor(255,-255);
   }
-  int timeStart = millis();
-  // while (!getValueUltraLeft && !getValueUltraRight)
-  // {
-  //   if (millis() - timeStart > 500)
-  //   {
-  //     break;
-  //   }
-  // }
+  int timeStamp = millis();
+    while (millis() - timeStamp < 1000){ // Test time to turn 270 or 135 degrees
+      if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
+        runMotor(0,0);
+        return;
+      }
+    }
 }
 
 void startRoutineLeft() 
@@ -262,23 +266,22 @@ void startRoutineLeft()
   delay(3000);
 
   //Spin left
-  runMotor(-100, 100);
-  delay(1000);
+  runMotor(-255, 255);
+  delay(250);
 
   //Run straight
-  accelerate(70,58);
-  delay(2000);
+  runMotor(100,100);
+  delay(1500);
 
   //Turn right until opponent is detect
-  runMotor(100,-100);
-  int timeStart = millis();
-  // while (!getValueUltraLeft && !getValueUltraRight)
-  // {
-  //   if (millis() - timeStart > 500)
-  //   {
-  //     break;
-  //   }
-  // }
+  runMotor(255, -255);
+  int timeStamp = millis();
+    while (millis() - timeStamp < 1000){ // Test time to turn 270 or 135 degrees
+      if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
+        runMotor(0,0);
+        return;
+      }
+    }
 }
 
 void startRoutineRight() 
@@ -295,13 +298,12 @@ void startRoutineRight()
   delay(400);
 
   //Turn left until detected
-  runMotor(-100,100);
-  int timeStart = millis();
-  // while (!getValueUltraLeft && !getValueUltraRight)
-  // {
-  //   if (millis() - timeStart > 500)
-  //   {
-  //     break;
-  //   }
-  // }
+  runMotor(255, -255);
+  int timeStamp = millis();
+    while (millis() - timeStamp < 1000){ // Test time to turn 270 or 135 degrees
+      if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
+        runMotor(0,0);
+        return;
+      }
+    }
 }
