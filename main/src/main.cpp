@@ -30,6 +30,7 @@ SharpIR sensor(SharpIR::GP2Y0A02YK0F, A4);
 
 //constants
 int count = 0;
+int preDirection = 0;
 // sensor
 int colourThreshold;
 NewPing sonarLeft(ultraLeftTrig, ultraLeftEcho, maxDistance);
@@ -86,16 +87,17 @@ void loop() {
     }
   }
   else{
-    int lineLeftValue = analogRead(lineLeft);
+  runMotor(255,255);
+  int lineLeftValue = analogRead(lineLeft);
   Serial.print("Left:");
   Serial.println(lineLeftValue);
 
-  //Mid sensor white = 21
+  // //Mid sensor white = 21
   int lineMidValue = analogRead(lineMid);
   Serial.print("Mid: ");
   Serial.println(lineMidValue);
 
-  //Right sensor white = 26
+  // //Right sensor white = 26
   int lineRightValue = analogRead(lineRight);
   Serial.print("Right: ");
   Serial.println(lineRightValue);
@@ -105,29 +107,52 @@ void loop() {
     backOff(-1);
   }
   else if (lineMidValue > 100){
-    runMotor(70,70);
+    runMotor(255,255);
+    delay(500);
   }
   else if (lineRightValue > 100){
     Serial.println("Backoff");
     backOff(1);
   }
   else{
-    if (getValueIR()) {
+    int IRValue=getValueIR();
+    int UltraLeftValue=getValueUltraLeft();
+    int UltraRightValue=getValueUltraRight();
+    if (IRValue && UltraLeftValue && UltraRightValue ) {
       attack();
-    } else if (getValueUltraLeft()) {
+    } else if (IRValue && UltraLeftValue == 0 && UltraRightValue == 0){
+      attack();
+    } else if (IRValue == 0 && UltraLeftValue && UltraRightValue){
+      attack();
+    } else if (IRValue == 0 && UltraLeftValue && UltraRightValue == 0) {
       runMotor(255, -255);
-    } else if (getValueUltraRight()) {
+    } else if (IRValue == 0 && UltraLeftValue == 0 && UltraRightValue) {
       runMotor(-255, 255);
-    } else {
-      runMotor(255, -255);
-      int timeStamp = millis();
-      while (millis() - timeStamp < 1000){ // Test time to turn 270 or 135 degrees
+    } else if (IRValue && UltraLeftValue && UltraRightValue == 0){
+      runMotor(255, 170);
+      preDirection = -1;
+    }else if (IRValue && UltraLeftValue == 0 && UltraRightValue){
+      runMotor(170, 255);
+      preDirection = 1;
+    }
+    else {
+      if (preDirection == -1){
+        runMotor(-255,255);
+        preDirection = 0;
+      } else if (preDirection == 1){
+        runMotor(255, -255);
+        preDirection = 0;
+      }
+      else{
+        while (true){ // Test time to turn 270 or 135 degrees
+        runMotor(255, -255);
         if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
           runMotor(0,0);
           break;
         }
       }
-      runMotor(255,255);
+      }
+      
     }
   }     
     }
@@ -152,10 +177,15 @@ int getValueIR()
     count++;
   }
   delay(interval);
-  if (maxDistance > 120) {
-    maxDistance = 0;
+  if (maxDistance > 45) {
+    digitalWrite(LED_BUILTIN, LOW);
+    return 0;
   }
-  return maxDistance;
+  else{
+    digitalWrite(LED_BUILTIN, HIGH);
+    return 1;
+  }
+  
 }
 
 
@@ -163,10 +193,12 @@ int getValueUltraLeft()
 {
   int distance = sonarLeft.ping_cm();
   delayMicroseconds(100);
-  if (distance > 150) {
-    distance = 0;
+  if (distance > 45) {
+    return 0;
+  }else{
+    return 1;
   }
-  return distance;
+  
 }
 
 
@@ -174,10 +206,11 @@ int getValueUltraRight()
 {
   int distance = sonarRight.ping_cm();
   delayMicroseconds(100);
-  if (distance > 150) {
-    distance = 0;
+  if (distance > 45) {
+    return 0;
+  }else{
+    return 1;
   }
-  return distance;
 }
 
 void runMotor(int left, int right) {
@@ -192,12 +225,12 @@ void runMotor(int left, int right) {
   }
   if (right > 0) {
     Serial.println("Right forwarded");
-    digitalWrite(in3, LOW);
-    digitalWrite(in4, HIGH);
-  } else {
-    Serial.println("Right backwarded");
     digitalWrite(in3, HIGH);
     digitalWrite(in4, LOW);
+  } else {
+    Serial.println("Right backwarded");
+    digitalWrite(in3, LOW);
+    digitalWrite(in4, HIGH);
   }
   analogWrite(enRight, abs(right)); 
   analogWrite(enLeft, abs(left));
@@ -240,24 +273,45 @@ void backOff(int direction)
   runMotor(0,0);
   
   //Run backward
-  runMotor(-255, -255);
-  delay(300);
+  if (direction == -1){
+  runMotor(-255, -100);
+  }
+  else if (direction == 1){
+    runMotor(-100,-255);
+  }
+  
+  delay(1000);
 
-  //Turn and scan
-  if (direction == -1)
-  {
+  if (direction == -1){
+    runMotor(255,-255);
+    
+  }
+  else if (direction == 1){
     runMotor(-255,255);
   }
-  else{
-    runMotor(255,-255);
-  }
-  int timeStamp = millis();
-    while (millis() - timeStamp < 1000){ // Test time to turn 270 or 135 degrees
-      if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
-        runMotor(0,0);
-        return;
-      }
+  
+  while (true){
+    if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
+      runMotor(0,0);
+      break;
     }
+  }
+
+  //Turn and scan
+  // int timeStamp = millis();
+  //   while (millis() - timeStamp < 1000){ // Test time to turn 270 or 135 degrees
+  //   if (direction == -1)
+  //   {
+  //     runMotor(-255,255);
+  //   }
+  //   else{
+  //     runMotor(255,-255);
+  //   }
+  //     if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
+  //       runMotor(0,0);
+  //       return;
+  //     }
+  //   }
 }
 
 void startRoutineLeft() 
@@ -289,11 +343,11 @@ void startRoutineRight()
   Serial.println("Start routine Right");
   delay(3000);
   runMotor(100, -100);
-  int timeStamp = millis();
-    while (millis() - timeStamp < 1000){ // Test time to turn 270 or 135 degrees
-      if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
-        runMotor(0,0);
-        return;
-      }
+  // Test time to turn 270 or 135 degrees
+  while (true){
+    if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
+      runMotor(0,0);
+      break;
     }
+  }
 }
