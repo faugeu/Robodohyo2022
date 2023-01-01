@@ -127,7 +127,7 @@ void loop() {
           break;
         }
       }
-      runMotor(70,70);
+      runMotor(255,255);
     }
   }     
     }
@@ -162,7 +162,7 @@ int getValueIR()
 int getValueUltraLeft() 
 {
   int distance = sonarLeft.ping_cm();
-  delay(100);
+  delayMicroseconds(100);
   if (distance > 150) {
     distance = 0;
   }
@@ -173,7 +173,7 @@ int getValueUltraLeft()
 int getValueUltraRight() 
 {
   int distance = sonarRight.ping_cm();
-  delay(100);
+  delayMicroseconds(100);
   if (distance > 150) {
     distance = 0;
   }
@@ -288,17 +288,7 @@ void startRoutineRight()
 {
   Serial.println("Start routine Right");
   delay(3000);
-
-  //Spin left
   runMotor(100, -100);
-  delay(400);
-
-  //Run straight
-  accelerate(70, 58);
-  delay(400);
-
-  //Turn left until detected
-  runMotor(255, -255);
   int timeStamp = millis();
     while (millis() - timeStamp < 1000){ // Test time to turn 270 or 135 degrees
       if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
