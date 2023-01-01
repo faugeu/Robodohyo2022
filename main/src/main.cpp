@@ -140,7 +140,7 @@ void loop() {
         runMotor(-255,255);
         preDirection = 0;
       } else if (preDirection == 1){
-        runMotor(255, -255);
+        runMotor(255,-255);
         preDirection = 0;
       }
       else{
@@ -280,7 +280,7 @@ void backOff(int direction)
     runMotor(-100,-255);
   }
   
-  delay(1000);
+  delay(700);
 
   if (direction == -1){
     runMotor(255,-255);
