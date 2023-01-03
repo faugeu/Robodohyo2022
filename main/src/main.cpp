@@ -32,7 +32,7 @@ SharpIR sensor(SharpIR::GP2Y0A02YK0F, A4);
 int count = 0;
 int preDirection = 0;
 int lineLimit = 30;
-int distanceLimit = 45;
+int distanceLimit = 60;
 // sensor
 int colourThreshold;
 NewPing sonarLeft(ultraLeftTrig, ultraLeftEcho, maxDistance);
@@ -75,6 +75,7 @@ void setup() {
 
 void loop() {
   mainProgram();
+  // startRoutineRight();
 }
 
 
@@ -97,7 +98,7 @@ void mainProgram(){
   }
   else{
     if (lineCheck()) {
-      int IRValue=getValueIR();
+      int IRValue = getValueIR();
       int UltraLeftValue=getValueUltraLeft();
       int UltraRightValue=getValueUltraRight();
       if (IRValue && UltraLeftValue && UltraRightValue ) {
@@ -148,7 +149,10 @@ int lineCheck() {
   // // //Right sensor white = 26
   int lineRightValue = analogRead(lineRight);
 
-  if (lineLeftValue < lineLimit){
+  if (getValueUltraLeft() && getValueUltraRight()) {
+    return 1;
+  }
+  else if (lineLeftValue < lineLimit){
     Serial.println("Backoff");
     backOff(-1);
     return 0;
@@ -186,7 +190,7 @@ int getValueIR()
     count++;
   }
   delay(interval);
-  if (maxDistance > distanceLimit) {
+  if (maxDistance > 45) {
     digitalWrite(LED_BUILTIN, LOW);
     return 0;
   }
@@ -201,7 +205,7 @@ int getValueUltraLeft()
 { 
   int distance = sonarLeft.ping_cm();
   delay(10);
-  if (distance > distanceLimit || distance == 0) {
+  if (distance > 45 || distance == 0) {
     return 0;
   }else{
     return 1;
@@ -213,7 +217,7 @@ int getValueUltraRight()
 {
   int distance = sonarRight.ping_cm();
   delay(10);
-  if (distance > distanceLimit || distance == 0) {
+  if (distance > 70 || distance == 0) {
     return 0;
   }else{
     return 1;
@@ -242,27 +246,6 @@ void runMotor(int left, int right) {
   }
   analogWrite(enRight, abs(right)); 
   analogWrite(enLeft, abs(left));
-}
-
-
-void accelerate(int direction, int maxSpeed) {
-  // -1 is reverse, 1 is straight
-  Serial.println("Accelerate");
-  int delayTime = 10; // milliseconds between each speed step
-  // accelerate the motor
-  if (direction == 1) {
-    for(int speed = 0; speed <= maxSpeed; speed++) { // counts from 0 to 255 (max speed) using the variable "speed"
-      runMotor(speed, speed); // set the new speed
-      delay(delayTime); // delay between speed steps
-    }
-  }
-  else {
-    for(int speed = 0; speed <= maxSpeed; speed++) { // counts from 0 to 255 (max speed) using the variable "speed"
-      runMotor(-speed, -speed); // set the new speed
-      delay(delayTime); // delay between speed steps
-    }
-  }
-  
 }
 
 
@@ -310,8 +293,9 @@ void startRoutineLeft()
 {
   Serial.println("Start routine Left");
   delay(3000);
-  runMotor(-255, 255);
-  // Test time to turn 270 or 135 degrees
+  runMotor(-100, 255);
+  
+
   while (true){
     if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
       runMotor(0,0);
