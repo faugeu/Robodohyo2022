@@ -31,6 +31,8 @@ SharpIR sensor(SharpIR::GP2Y0A02YK0F, A4);
 //constants
 int count = 0;
 int preDirection = 0;
+int lineLimit = 100;
+int distanceLimit = 40;
 // sensor
 int colourThreshold;
 NewPing sonarLeft(ultraLeftTrig, ultraLeftEcho, maxDistance);
@@ -47,6 +49,7 @@ void backOff(int);
 void startRoutineLeft();
 void startRoutineRight();
 void runMotor(int, int);
+void mainProgram();
 
 void setup() {
   Serial.begin(9600);   
@@ -70,6 +73,11 @@ void setup() {
 
 
 void loop() {
+  mainProgram();
+}
+
+
+void mainProgram(){
   if (count == 0){
     int buttonStatusLeft = digitalRead(buttonLeft);
     int buttonStatusRight = digitalRead(buttonRight);   
@@ -87,83 +95,87 @@ void loop() {
     }
   }
   else{
-  runMotor(255,255);
-  int lineLeftValue = analogRead(lineLeft);
-  Serial.print("Left:");
-  Serial.println(lineLeftValue);
-
-  // //Mid sensor white = 21
-  int lineMidValue = analogRead(lineMid);
-  Serial.print("Mid: ");
-  Serial.println(lineMidValue);
-
-  // //Right sensor white = 26
-  int lineRightValue = analogRead(lineRight);
-  Serial.print("Right: ");
-  Serial.println(lineRightValue);
-
-  if (lineLeftValue > 100){
-    Serial.println("Backoff");
-    backOff(-1);
-  }
-  else if (lineMidValue > 100){
     runMotor(255,255);
-    delay(500);
-  }
-  else if (lineRightValue > 100){
-    Serial.println("Backoff");
-    backOff(1);
-  }
-  else{
-    int IRValue=getValueIR();
-    int UltraLeftValue=getValueUltraLeft();
-    int UltraRightValue=getValueUltraRight();
-    if (IRValue && UltraLeftValue && UltraRightValue ) {
-      attack();
-    } else if (IRValue && UltraLeftValue == 0 && UltraRightValue == 0){
-      attack();
-    } else if (IRValue == 0 && UltraLeftValue && UltraRightValue){
-      attack();
-    } else if (IRValue == 0 && UltraLeftValue && UltraRightValue == 0) {
-      runMotor(255, -255);
-    } else if (IRValue == 0 && UltraLeftValue == 0 && UltraRightValue) {
-      runMotor(-255, 255);
-    } else if (IRValue && UltraLeftValue && UltraRightValue == 0){
-      runMotor(255, 170);
-      preDirection = -1;
-    }else if (IRValue && UltraLeftValue == 0 && UltraRightValue){
-      runMotor(170, 255);
-      preDirection = 1;
+    int lineLeftValue = analogRead(lineLeft);
+    // // //Mid sensor white = 21
+    int lineMidValue = analogRead(lineMid);
+    // // //Right sensor white = 26
+    int lineRightValue = analogRead(lineRight);
+
+    if (lineLeftValue > lineLimit){
+      Serial.println("Backoff");
+      backOff(-1);
     }
-    else {
-      if (preDirection == -1){
-        runMotor(-255,255);
-        preDirection = 0;
-      } else if (preDirection == 1){
-        runMotor(255,-255);
-        preDirection = 0;
-      }
-      else{
-        while (true){ // Test time to turn 270 or 135 degrees
+    else if (lineMidValue > lineLimit){
+      runMotor(255,255);
+      delay(500);
+    }
+    else if (lineRightValue > lineLimit){
+      Serial.println("Backoff");
+      backOff(1);
+    }
+    else{
+      int IRValue=getValueIR();
+      int UltraLeftValue=getValueUltraLeft();
+      int UltraRightValue=getValueUltraRight();
+      if (IRValue && UltraLeftValue && UltraRightValue ) {
+        attack();
+      } else if (IRValue && UltraLeftValue == 0 && UltraRightValue == 0){
+        attack();
+      } else if (IRValue == 0 && UltraLeftValue && UltraRightValue){
+        attack();
+      } else if (IRValue == 0 && UltraLeftValue && UltraRightValue == 0) {
         runMotor(255, -255);
-        if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
-          runMotor(0,0);
-          break;
+      } else if (IRValue == 0 && UltraLeftValue == 0 && UltraRightValue) {
+        runMotor(-255, 255);
+      } else if (IRValue && UltraLeftValue && UltraRightValue == 0){
+        runMotor(255, 170);
+        preDirection = -1;
+      }else if (IRValue && UltraLeftValue == 0 && UltraRightValue){
+        runMotor(170, 255);
+        preDirection = 1;
+      }
+      else {
+        if (preDirection == -1){
+          runMotor(-255,255);
+          preDirection = 0;
+        } else if (preDirection == 1){
+          runMotor(255,-255);
+          preDirection = 0;
+        }
+        else{
+          while (true){ // Test time to turn 270 or 135 degrees
+            runMotor(255, -255);
+            if (lineLeftValue > lineLimit){
+              Serial.println("Backoff");
+              backOff(-1);
+            }
+            else if (lineMidValue > lineLimit){
+              runMotor(255,255);
+              delay(500);
+            }
+            else if (lineRightValue > lineLimit){
+              Serial.println("Backoff");
+              backOff(1);
+            }
+            else if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
+              runMotor(0,0);
+              break;
+            }
+          }
         }
       }
-      }
-      
-    }
-  }     
-    }
+    }     
+  }
 }
+
 
 int getValueIR()
 {
   // int distance = sensor.getDistance(); //get distance from IR
   // return distance;
   int maxDistance = 0;
-  int samples = 10;
+  int samples = 8;
   int interval = 38;
   int delayBurst = 1.5;
   int count = 0;
@@ -177,7 +189,7 @@ int getValueIR()
     count++;
   }
   delay(interval);
-  if (maxDistance > 45) {
+  if (maxDistance > distanceLimit) {
     digitalWrite(LED_BUILTIN, LOW);
     return 0;
   }
@@ -185,15 +197,16 @@ int getValueIR()
     digitalWrite(LED_BUILTIN, HIGH);
     return 1;
   }
-  
 }
 
 
 int getValueUltraLeft() 
-{
+{ 
   int distance = sonarLeft.ping_cm();
   delayMicroseconds(100);
-  if (distance > 45) {
+  Serial.print("Ultra left: ");
+  Serial.println(distance);
+  if (distance > distanceLimit || distance == 0) {
     return 0;
   }else{
     return 1;
@@ -206,12 +219,15 @@ int getValueUltraRight()
 {
   int distance = sonarRight.ping_cm();
   delayMicroseconds(100);
-  if (distance > 45) {
+  Serial.print("Ultra right: ");
+  Serial.println(distance);
+  if (distance > distanceLimit || distance == 0) {
     return 0;
   }else{
     return 1;
   }
 }
+
 
 void runMotor(int left, int right) {
   if (left > 0) {
@@ -261,7 +277,7 @@ void accelerate(int direction, int maxSpeed) {
 void attack() 
 {
   Serial.println("Attack");
-   runMotor(255, 255);
+  runMotor(255, 255);
 }
 
 
