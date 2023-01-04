@@ -116,7 +116,8 @@ void mainProgram(){
       } else if (IRValue == 0 && UltraLeftValue && UltraRightValue == 0) {
         runMotor(255, -255);
       } else if (IRValue == 0 && UltraLeftValue == 0 && UltraRightValue) {
-        runMotor(-255, 255);
+        runMotor(50, 255);
+        delay(100);
       } 
       else {
         if (preDirection == -1){
