@@ -31,10 +31,9 @@ SharpIR sensor(SharpIR::GP2Y0A02YK0F, A4);
 //constants
 int count = 0;
 int preDirection = 0;
-int lineLimit = 30;
+int lineLimit = 30; // The arena is black with white ring, lineLimit refers to the white value threshold to detect the ring.
 int distanceLimit = 60;
 // sensor
-int colourThreshold;
 NewPing sonarLeft(ultraLeftTrig, ultraLeftEcho, maxDistance);
 NewPing sonarRight(ultraRightTrig, ultraRightEcho, maxDistance);
 
@@ -42,8 +41,6 @@ NewPing sonarRight(ultraRightTrig, ultraRightEcho, maxDistance);
 int getValueIR();
 int getValueUltraLeft();
 int getValueUltraRight();
-void calibrate();
-void accelerate(int direction, int maxSpeed);
 void attack();
 void backOff(int);
 void startRoutineLeft();
@@ -75,7 +72,6 @@ void setup() {
 
 void loop() {
   mainProgram();
-  // startRoutineRight();
 }
 
 
@@ -116,6 +112,8 @@ void mainProgram(){
       } else if (IRValue == 0 && UltraLeftValue && UltraRightValue == 0) {
         runMotor(255, -255);
       } else if (IRValue == 0 && UltraLeftValue == 0 && UltraRightValue) {
+        // Because the right ultra sonic sensor has a longer range than the other two sensors, 
+        // the bot moves slightly forward if the right sensor detects the opponent.
         runMotor(50, 255);
         delay(100);
       } 
@@ -128,7 +126,7 @@ void mainProgram(){
           preDirection = 0;
         }
         else{
-          while (true){ // Test time to turn 270 or 135 degrees
+          while (true){
             runMotor(255, -255);
             lineCheck();
             if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
@@ -144,6 +142,10 @@ void mainProgram(){
 
 
 int lineCheck() {
+  /*
+  Detect the ring
+  */
+
   int lineLeftValue = analogRead(lineLeft);
   // // //Mid sensor white = 21
   int lineMidValue = analogRead(lineMid);
@@ -154,7 +156,6 @@ int lineCheck() {
     return 1;
   }
   else if (lineLeftValue < lineLimit){
-    Serial.println("Backoff");
     backOff(-1);
     return 0;
   }
@@ -164,7 +165,6 @@ int lineCheck() {
     return 0;
   }
   else if (lineRightValue < lineLimit){
-    Serial.println("Backoff");
     backOff(1);
     return 0;
   }
@@ -174,8 +174,11 @@ int lineCheck() {
 
 int getValueIR()
 {
-  // int distance = sensor.getDistance(); //get distance from IR
-  // return distance;
+  /*
+  To get values from the IR sensor
+  */
+
+  // Because there is a fluctuation in IR's values hence we have to take multiple samples and choose the longest distance to filter false values
   int maxDistance = 0;
   int samples = 10;
   int interval = 38;
@@ -191,6 +194,7 @@ int getValueIR()
     count++;
   }
   delay(interval);
+  // Any search distance which is longer than 45cm will result in false values. 
   if (maxDistance > 45) {
     digitalWrite(LED_BUILTIN, LOW);
     return 0;
@@ -204,8 +208,13 @@ int getValueIR()
 
 int getValueUltraLeft() 
 { 
+  /*
+  To get values from the ultra sensor to the left.
+  */
+
   int distance = sonarLeft.ping_cm();
   delay(10);
+  // Any search distance which is longer than 45cm will result in false values. 
   if (distance > 45 || distance == 0) {
     return 0;
   }else{
@@ -216,8 +225,13 @@ int getValueUltraLeft()
 
 int getValueUltraRight() 
 {
+  /*
+  To get values from the ultra sensor to the right.
+  */
+
   int distance = sonarRight.ping_cm();
   delay(10);
+  // Any search distance which is longer than 70cm will result in false values. 
   if (distance > 70 || distance == 0) {
     return 0;
   }else{
@@ -227,21 +241,21 @@ int getValueUltraRight()
 
 
 void runMotor(int left, int right) {
+  /*
+  To control the motor. Positive values move the wheel forward and vice versa.
+  */
+
   if (left > 0) {
-    Serial.println("Left forwarded");
     digitalWrite(in1, HIGH);
     digitalWrite(in2, LOW);
   } else {
-    Serial.println("Left backwarded");
     digitalWrite(in1, LOW);
     digitalWrite(in2, HIGH);
   }
   if (right > 0) {
-    Serial.println("Right forwarded");
     digitalWrite(in3, HIGH);
     digitalWrite(in4, LOW);
   } else {
-    Serial.println("Right backwarded");
     digitalWrite(in3, LOW);
     digitalWrite(in4, HIGH);
   }
@@ -252,16 +266,18 @@ void runMotor(int left, int right) {
 
 void attack() 
 {
-  Serial.println("Attack");
   runMotor(255, 255);
 }
 
 
 void backOff(int direction) 
 {
-  //-1 if left sensor detected and 1 if right sensor detected
+  /*
+  Back off when the bot reaches the ring.
+  -1 if left sensor detected and 1 if right sensor detected
+  */
+
   //Stop
-  Serial.println("Back off");
   runMotor(0,0);
   
   //Run backward
@@ -283,6 +299,7 @@ void backOff(int direction)
   }
   
   while (true){
+    // The bot spins around until it finds the opponent.
     if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
       runMotor(0,0);
       break;
@@ -292,9 +309,12 @@ void backOff(int direction)
 
 void startRoutineLeft() 
 {
-  Serial.println("Start routine Left");
+  /*
+  Start routine when hitting the left button.
+  */
+
   delay(3000);
-  runMotor(-100, 255);
+  runMotor(-255, 255); // Spin around until the bot detects the opponent.
   
 
   while (true){
@@ -303,21 +323,21 @@ void startRoutineLeft()
       break;
     }
   }
-  Serial.println("End start routine");
 }
 
 void startRoutineRight() 
 {
-  Serial.println("Start routine Right");
+  /*
+  Start routine when hitting the right button.
+  */
+
   delay(3000);
   runMotor(255, -255);
-  // Test time to turn 270 or 135 degrees
+
   while (true){
     if (getValueIR() || getValueUltraLeft() || getValueUltraRight()){
       runMotor(0,0);
       break;
     }
   }
-  Serial.println("End start routine");
-
 }
